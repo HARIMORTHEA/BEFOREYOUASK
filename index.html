@@ -1,18 +1,14 @@
-
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>소스 배합 계산기</title>
   <title>머스타드 마요 만드는 법 (How to Make Mustard Mayo)</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
     body { font-family: sans-serif; padding: 20px; max-width: 420px; margin: auto; }
     h2 { text-align: center; margin-bottom: 2px; }
     .sub { text-align: center; color: #666; font-size: 0.85em; margin-top: 0; margin-bottom: 20px; }
     .input-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; font-weight: bold; }
-    input, select { width: 100%; padding: 8px; box-sizing: border-box; }
-    .result { background: #f4f4f4; padding: 15px; border-radius: 5px; margin-top: 20px; }
     input, select { width: 100%; padding: 8px; box-sizing: border-box; font-size: 1em; }
     .pack-hint { font-size: 0.85em; color: #555; margin-top: 4px; }
     .result { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-top: 20px; }
@@ -25,19 +21,13 @@
 </head>
 <body>
 
-  <h2>머스타드 마요네즈 배합 계산기</h2>
-  <h2> 💛 머스타드 마요 만드는 법 💛 </h2>
+  <h2>💛 머스타드 마요 만드는 법 💛</h2>
   <p class="sub">How to Make Mustard Mayo</p>
 
-  <!-- 1. 통 단위 선택 또는 직접 입력 -->
   <!-- 1. 통 단위 선택 또는 직접 입력 / Tub size select or custom input -->
   <div class="input-group">
-    <label for="unitSelect">머스타드 통 단위 선택</label>
     <label for="unitSelect">🌭 머스타드 통 단위 선택 (Mustard Tub Size)</label>
     <select id="unitSelect" onchange="applyUnit()">
-      <option value="custom">직접 입력</option>
-      <option value="500">1소형 통 (500g)</option>
-      <option value="1000">1대형 통 (1,000g)</option>
       <option value="custom">직접 입력 (Custom Input)</option>
       <option value="550">1통 (1 Tub) - 550g</option>
       <option value="1100">2통 (2 Tubs) - 1,100g</option>
@@ -48,8 +38,6 @@
   </div>
 
   <div class="input-group">
-    <label for="mustard">머스타드 용량 (g)</label>
-    <input type="number" id="mustard" value="100" oninput="calculate()">
     <label for="mustard">🌭 머스타드 용량 (Mustard Amount, g)</label>
     <input type="number" id="mustard" value="1000" step="10" oninput="calculate()">
     <div class="pack-hint" id="mustardPack"></div>
@@ -57,13 +45,8 @@
 
   <hr>
 
-  <!-- 2. 계산 결과 -->
   <!-- 2. 계산 결과 / Calculated results -->
   <div class="result">
-    <h3>필요한 재료 비율</h3>
-    <p>마요네즈: <span id="mayo">0</span> g</p>
-    <p>레몬주스: <span id="lemon">0</span> g</p>
-    <p>설탕: <span id="sugar">0</span> g</p>
     <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
     <div class="result-row">
       <span class="result-label">🥚 마요네즈 Mayo (Ottogi)</span>
@@ -80,13 +63,9 @@
   </div>
 
   <script>
-    // 비율 설정 (예: 머스타드 100g 기준 -> 마요네즈 150g, 레몬주스 20g, 설탕 30g)
     // 머스타드 1g 당 필요한 비율 (소량 배합 기준: 머스타드 1kg = 설탕 500ml, 마요 3kg, 레몬주스 200ml)
     // Ratio per gram of mustard, based on the 1kg reference recipe
     const RATIO = {
-      mayo: 1.5,
-      lemon: 0.2,
-      sugar: 0.3
       sugar: 0.5, // ml per g mustard
       mayo: 3,    // g per g mustard
       lemon: 0.2  // ml per g mustard
@@ -99,6 +78,12 @@
     };
 
     function applyUnit() {
+      const select = document.getElementById('unitSelect');
+      const mustardInput = document.getElementById('mustard');
+
+      if (select.value !== 'custom') {
+        mustardInput.value = select.value;
+        calculate();
       }
     }
 
@@ -115,41 +100,123 @@
     }
 
     // amount, packSize: 같은 단위(g) / same unit (g). toDisplay: 표시 포맷 함수
-    function formatWithPack(amount, packSize, toDisplay) {
+    // unitKo/unitEn: 단위 라벨 (예: 통/tub, 팩/pack)
+    function formatWithPack(amount, packSize, toDisplay, unitKo = '팩', unitEn = 'pack') {
       const packs = Math.floor(amount / packSize + 1e-9);
       const remainder = amount - packs * packSize;
       const total = toDisplay(amount);
 
       if (packs === 0) return total;
 
-      const packLabel = `${packs}팩(${packs} pack${packs > 1 ? 's' : ''})`;
-      if (remainder < packSize * 0.001) return `${total} (${packLabel})`;
+      const packLabel = `${packs}${unitKo}(${packs} ${unitEn}${packs > 1 ? 's' : ''})`;
+      // 초과분이 단위 용량의 10% 이하면 반올림해서 개수만 표시
+      if (remainder < packSize * 0.10) return `${total} (${packLabel})`;
       return `${total} (${packLabel} + ${toDisplay(remainder)})`;
     }
 
     function calculate() {
-      const mustardVal = parseFloat(document.getElementById('mustard').value) || 0;
       const mustardG = parseFloat(document.getElementById('mustard').value) || 0;
       const mayoG = mustardG * RATIO.mayo;
       const sugarMl = mustardG * RATIO.sugar;
       const lemonMl = mustardG * RATIO.lemon;
 
-      document.getElementById('mayo').innerText = (mustardVal * RATIO.mayo).toFixed(1);
-      document.getElementById('lemon').innerText = (mustardVal * RATIO.lemon).toFixed(1);
-      document.getElementById('sugar').innerText = (mustardVal * RATIO.sugar).toFixed(1);
       document.getElementById('mustardPack').innerText =
-        '→ ' + formatWithPack(mustardG, PACK.mustard, formatG);
+        '→ ' + formatWithPack(mustardG, PACK.mustard, formatG, '통', 'tub');
       document.getElementById('mayo').innerText =
         formatWithPack(mayoG, PACK.mayo, formatKg);
       document.getElementById('lemon').innerText = formatMl(lemonMl);
       document.getElementById('sugar').innerText = formatMl(sugarMl);
     }
 
-    // 초기 계산 실행
     // 초기 계산 실행 / Run initial calculation
     calculate();
   </script>
 
+  <hr style="margin: 40px 0;">
+
+  <h2>❤️ 스파이시 마요 만드는 법 ❤️</h2>
+  <p class="sub">How to Make Spicy Mayo</p>
+
+  <!-- 1. 통 단위 선택 또는 직접 입력 / Tub size select or custom input -->
+  <div class="input-group">
+    <label for="spicyUnitSelect">🌶️ 스리라차 통 단위 선택 (Sriracha Tub Size)</label>
+    <select id="spicyUnitSelect" onchange="applySpicyUnit()">
+      <option value="custom">직접 입력 (Custom Input)</option>
+      <option value="740">1통 (1 Tub) - 740ml</option>
+      <option value="1480">2통 (2 Tubs) - 1,480ml</option>
+      <option value="2220">3통 (3 Tubs) - 2,220ml</option>
+      <option value="2960">4통 (4 Tubs) - 2,960ml</option>
+      <option value="3700">5통 (5 Tubs) - 3,700ml</option>
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="sriracha">🌶️ 스리라차 용량 (Sriracha Amount, ml)</label>
+    <input type="number" id="sriracha" value="1000" step="10" oninput="calculateSpicy()">
+    <div class="pack-hint" id="srirachaPack"></div>
+  </div>
+
+  <hr>
+
+  <!-- 2. 계산 결과 / Calculated results -->
+  <div class="result">
+    <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
+    <div class="result-row">
+      <span class="result-label">🥚 마요네즈 Mayo (Ottogi)</span>
+      <span class="result-value" id="spicyMayo">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍋 레몬주스 Lemon Juice</span>
+      <span class="result-value" id="spicyLemon">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍬 설탕 Sugar</span>
+      <span class="result-value" id="spicySugar">0</span>
+    </div>
+  </div>
+
+  <script>
+    // 스리라차 1ml 당 필요한 비율 (소량 배합 기준: 스리라차 1kg = 설탕 500ml, 마요 3kg, 레몬주스 100ml)
+    // Ratio per ml of sriracha, based on the 1kg reference recipe
+    const RATIO_SPICY = {
+      sugar: 0.5, // ml per ml sriracha
+      mayo: 3,    // g per ml sriracha
+      lemon: 0.1  // ml per ml sriracha
+    };
+
+    // 실제 구매 단위 (포장 단위) / Real-world purchase pack sizes
+    const PACK_SPICY = {
+      sriracha: 740, // ml per tub
+      mayo: 3200     // g per pack (3.2kg)
+    };
+
+    function applySpicyUnit() {
+      const select = document.getElementById('spicyUnitSelect');
+      const srirachaInput = document.getElementById('sriracha');
+
+      if (select.value !== 'custom') {
+        srirachaInput.value = select.value;
+        calculateSpicy();
+      }
+    }
+
+    function calculateSpicy() {
+      const srirachaMl = parseFloat(document.getElementById('sriracha').value) || 0;
+      const mayoG = srirachaMl * RATIO_SPICY.mayo;
+      const sugarMl = srirachaMl * RATIO_SPICY.sugar;
+      const lemonMl = srirachaMl * RATIO_SPICY.lemon;
+
+      document.getElementById('srirachaPack').innerText =
+        '→ ' + formatWithPack(srirachaMl, PACK_SPICY.sriracha, formatMl, '통', 'tub');
+      document.getElementById('spicyMayo').innerText =
+        formatWithPack(mayoG, PACK_SPICY.mayo, formatKg);
+      document.getElementById('spicyLemon').innerText = formatMl(lemonMl);
+      document.getElementById('spicySugar').innerText = formatMl(sugarMl);
+    }
+
+    // 초기 계산 실행 / Run initial calculation
+    calculateSpicy();
+  </script>
+
 </body>
-</html>
 </html>
