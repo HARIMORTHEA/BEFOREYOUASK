@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>소스 만드는 법 (How to Make Sauces)</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 420px; margin: auto; }
+    h2 { text-align: center; margin-bottom: 2px; }
+    .sub { text-align: center; color: #666; font-size: 0.85em; margin-top: 0; margin-bottom: 20px; }
+    .input-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; box-sizing: border-box; font-size: 1em; }
+    .pack-hint { font-size: 0.85em; color: #555; margin-top: 4px; }
+    .result { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .result h3 { margin-top: 0; }
+    .result-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #e0e0e0; gap: 10px; }
+    .result-row:last-child { border-bottom: none; }
+    .result-label { font-weight: bold; }
+    .result-value { text-align: right; }
+  </style>
+</head>
+<body>
+
+  <h2>💛 머스타드 마요 만드는 법 💛</h2>
+  <p class="sub">How to Make Mustard Mayo</p>
+
+  <!-- 1. 통 단위 선택 또는 직접 입력 / Tub size select or custom input -->
+  <div class="input-group">
+    <label for="unitSelect">🌭 머스타드 통 단위 선택 (Mustard Tub Size)</label>
+    <select id="unitSelect" onchange="applyUnit()">
+      <option value="custom">직접 입력 (Custom Input)</option>
+      <option value="550">1통 (1 Tub) - 550g</option>
+      <option value="1100">2통 (2 Tubs) - 1,100g</option>
+      <option value="1650">3통 (3 Tubs) - 1,650g</option>
+      <option value="2200">4통 (4 Tubs) - 2,200g</option>
+      <option value="2750">5통 (5 Tubs) - 2,750g</option>
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="mustard">🌭 머스타드 용량 (Mustard Amount, g)</label>
+    <input type="number" id="mustard" value="1000" step="10" oninput="calculate()">
+    <div class="pack-hint" id="mustardPack"></div>
+  </div>
+
+  <hr>
+
+  <!-- 2. 계산 결과 / Calculated results -->
+  <div class="result">
+    <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
+    <div class="result-row">
+      <span class="result-label">🥚 마요네즈 Mayo (Ottogi)</span>
+      <span class="result-value" id="mayo">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍋 레몬주스 Lemon Juice</span>
+      <span class="result-value" id="lemon">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍬 설탕 Sugar</span>
+      <span class="result-value" id="sugar">0</span>
+    </div>
+  </div>
+
+  <script>
+    // 머스타드 1g 당 필요한 비율 (소량 배합 기준: 머스타드 1kg = 설탕 500ml, 마요 3kg, 레몬주스 200ml)
+    // Ratio per gram of mustard, based on the 1kg reference recipe
+    const RATIO = {
+      sugar: 0.5, // ml per g mustard
+      mayo: 3,    // g per g mustard
+      lemon: 0.2  // ml per g mustard
+    };
+
+    // 실제 구매 단위 (포장 단위) / Real-world purchase pack sizes
+    const PACK = {
+      mustard: 550,  // g per tub
+      mayo: 3200     // g per pack (3.2kg)
+    };
+
+    function applyUnit() {
+      const select = document.getElementById('unitSelect');
+      const mustardInput = document.getElementById('mustard');
+
+      if (select.value !== 'custom') {
+        mustardInput.value = select.value;
+        calculate();
+      }
+    }
+
+    function formatG(v) {
+      return `${Math.round(v).toLocaleString()}g`;
+    }
+
+    function formatKg(v) {
+      return `${parseFloat((v / 1000).toFixed(2))}kg`;
+    }
+
+    function formatMl(v) {
+      return `${parseFloat(v.toFixed(1))}ml`;
+    }
+
+    // amount, packSize: 같은 단위(g) / same unit (g). toDisplay: 표시 포맷 함수
+    // unitKo/unitEn: 단위 라벨 (예: 통/tub, 팩/pack)
+    function formatWithPack(amount, packSize, toDisplay, unitKo = '팩', unitEn = 'pack') {
+      const packs = Math.floor(amount / packSize + 1e-9);
+      const remainder = amount - packs * packSize;
+      const total = toDisplay(amount);
+
+      if (packs === 0) return total;
+
+      const packLabel = `${packs}${unitKo}(${packs} ${unitEn}${packs > 1 ? 's' : ''})`;
+      // 초과분이 단위 용량의 10% 이하면 반올림해서 개수만 표시
+      if (remainder < packSize * 0.10) return `${total} (${packLabel})`;
+      return `${total} (${packLabel} + ${toDisplay(remainder)})`;
+    }
+
+    function calculate() {
+      const mustardG = parseFloat(document.getElementById('mustard').value) || 0;
+      const mayoG = mustardG * RATIO.mayo;
+      const sugarMl = mustardG * RATIO.sugar;
+      const lemonMl = mustardG * RATIO.lemon;
+
+      document.getElementById('mustardPack').innerText =
+        '→ ' + formatWithPack(mustardG, PACK.mustard, formatG, '통', 'tub');
+      document.getElementById('mayo').innerText =
+        formatWithPack(mayoG, PACK.mayo, formatKg);
+      document.getElementById('lemon').innerText = formatMl(lemonMl);
+      document.getElementById('sugar').innerText = formatMl(sugarMl);
+    }
+
+    // 초기 계산 실행 / Run initial calculation
+    calculate();
+  </script>
+
+  <hr style="margin: 40px 0;">
+
+  <h2>❤️ 스파이시 마요 만드는 법 ❤️</h2>
+  <p class="sub">How to Make Spicy Mayo</p>
+
+  <!-- 1. 통 단위 선택 또는 직접 입력 / Tub size select or custom input -->
+  <div class="input-group">
+    <label for="spicyUnitSelect">🌶️ 스리라차 통 단위 선택 (Sriracha Tub Size)</label>
+    <select id="spicyUnitSelect" onchange="applySpicyUnit()">
+      <option value="custom">직접 입력 (Custom Input)</option>
+      <option value="740">1통 (1 Tub) - 740ml</option>
+      <option value="1480">2통 (2 Tubs) - 1,480ml</option>
+      <option value="2220">3통 (3 Tubs) - 2,220ml</option>
+      <option value="2960">4통 (4 Tubs) - 2,960ml</option>
+      <option value="3700">5통 (5 Tubs) - 3,700ml</option>
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="sriracha">🌶️ 스리라차 용량 (Sriracha Amount, ml)</label>
+    <input type="number" id="sriracha" value="1000" step="10" oninput="calculateSpicy()">
+    <div class="pack-hint" id="srirachaPack"></div>
+  </div>
+
+  <hr>
+
+  <!-- 2. 계산 결과 / Calculated results -->
+  <div class="result">
+    <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
+    <div class="result-row">
+      <span class="result-label">🥚 마요네즈 Mayo (Ottogi)</span>
+      <span class="result-value" id="spicyMayo">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍋 레몬주스 Lemon Juice</span>
+      <span class="result-value" id="spicyLemon">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍬 설탕 Sugar</span>
+      <span class="result-value" id="spicySugar">0</span>
+    </div>
+  </div>
+
+  <script>
+    // 스리라차 1ml 당 필요한 비율 (소량 배합 기준: 스리라차 1kg = 설탕 500ml, 마요 3kg, 레몬주스 100ml)
+    // Ratio per ml of sriracha, based on the 1kg reference recipe
+    const RATIO_SPICY = {
+      sugar: 0.5, // ml per ml sriracha
+      mayo: 3,    // g per ml sriracha
+      lemon: 0.1  // ml per ml sriracha
+    };
+
+    // 실제 구매 단위 (포장 단위) / Real-world purchase pack sizes
+    const PACK_SPICY = {
+      sriracha: 740, // ml per tub
+      mayo: 3200     // g per pack (3.2kg)
+    };
+
+    function applySpicyUnit() {
+      const select = document.getElementById('spicyUnitSelect');
+      const srirachaInput = document.getElementById('sriracha');
+
+      if (select.value !== 'custom') {
+        srirachaInput.value = select.value;
+        calculateSpicy();
+      }
+    }
+
+    function calculateSpicy() {
+      const srirachaMl = parseFloat(document.getElementById('sriracha').value) || 0;
+      const mayoG = srirachaMl * RATIO_SPICY.mayo;
+      const sugarMl = srirachaMl * RATIO_SPICY.sugar;
+      const lemonMl = srirachaMl * RATIO_SPICY.lemon;
+
+      document.getElementById('srirachaPack').innerText =
+        '→ ' + formatWithPack(srirachaMl, PACK_SPICY.sriracha, formatMl, '통', 'tub');
+      document.getElementById('spicyMayo').innerText =
+        formatWithPack(mayoG, PACK_SPICY.mayo, formatKg);
+      document.getElementById('spicyLemon').innerText = formatMl(lemonMl);
+      document.getElementById('spicySugar').innerText = formatMl(sugarMl);
+    }
+
+    // 초기 계산 실행 / Run initial calculation
+    calculateSpicy();
+  </script>
+
+  <hr style="margin: 40px 0;">
+
+  <h2>🤍 치즈 소스 만드는 법 🤍</h2>
+  <p class="sub">How to Make Cheese Sauce</p>
+
+  <!-- 1. 팩 단위 선택 또는 직접 입력 / Pack size select or custom input -->
+  <div class="input-group">
+    <label for="cheeseUnitSelect">🧀 파마산 팩 단위 선택 (Parmesan Pack Size)</label>
+    <select id="cheeseUnitSelect" onchange="applyCheeseUnit()">
+      <option value="custom">직접 입력 (Custom Input)</option>
+      <option value="100">1팩 (1 Pack) - 100g</option>
+      <option value="200">2팩 (2 Packs) - 200g</option>
+      <option value="300">3팩 (3 Packs) - 300g</option>
+      <option value="400" selected>4팩/1박스 (4 Packs / 1 Box) - 400g</option>
+      <option value="500">5팩 (5 Packs) - 500g</option>
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="parmesan">🧀 파마산 용량 (Parmesan Amount, g)</label>
+    <input type="number" id="parmesan" value="400" step="10" oninput="calculateCheese()">
+    <div class="pack-hint" id="parmesanPack"></div>
+  </div>
+
+  <hr>
+
+  <!-- 2. 계산 결과 / Calculated results -->
+  <div class="result">
+    <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
+    <div class="result-row">
+      <span class="result-label">🥚 마요네즈 Mayo (Ottogi 3.2kg)</span>
+      <span class="result-value" id="cheeseMayo">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🍬 설탕 Sugar</span>
+      <span class="result-value" id="cheeseSugar">0</span>
+    </div>
+  </div>
+
+  <script>
+    // 파마산 1g 당 필요한 비율 (배합 기준: 파마산 400g = 마요 4kg, 설탕 400g)
+    // Ratio per gram of parmesan, based on the 400g reference recipe
+    const RATIO_CHEESE = {
+      mayo: 4000 / 400,  // g per g parmesan = 10
+      sugar: 400 / 400   // g per g parmesan = 1
+    };
+
+    // 실제 구매 단위 (포장 단위) / Real-world purchase pack sizes
+    const PACK_CHEESE = {
+      parmesan: 100,  // g per pack
+      mayo: 3200      // g per pack (Ottogi 3.2kg)
+    };
+
+    function applyCheeseUnit() {
+      const select = document.getElementById('cheeseUnitSelect');
+      const parmesanInput = document.getElementById('parmesan');
+
+      if (select.value !== 'custom') {
+        parmesanInput.value = select.value;
+        calculateCheese();
+      }
+    }
+
+    function calculateCheese() {
+      const parmesanG = parseFloat(document.getElementById('parmesan').value) || 0;
+      const mayoG = parmesanG * RATIO_CHEESE.mayo;
+      const sugarG = parmesanG * RATIO_CHEESE.sugar;
+
+      document.getElementById('parmesanPack').innerText =
+        '→ ' + formatWithPack(parmesanG, PACK_CHEESE.parmesan, formatG, '팩', 'pack');
+      document.getElementById('cheeseMayo').innerText =
+        formatWithPack(mayoG, PACK_CHEESE.mayo, formatKg);
+      document.getElementById('cheeseSugar').innerText = formatG(sugarG);
+    }
+
+    // 초기 계산 실행 / Run initial calculation
+    calculateCheese();
+  </script>
+
+  <hr style="margin: 40px 0;">
+
+  <h2>🤎 카츠 소스 만드는 법 🤎</h2>
+  <p class="sub">How to Make Katsu Sauce</p>
+
+  <!-- 1. 병 단위 선택 또는 직접 입력 / Bottle size select or custom input -->
+  <div class="input-group">
+    <label for="katsuUnitSelect">🐶 불독 병 단위 선택 (Bulldog Bottle Size)</label>
+    <select id="katsuUnitSelect" onchange="applyKatsuUnit()">
+      <option value="custom">직접 입력 (Custom Input)</option>
+      <option value="1800">1병 (1 Bottle) - 1,800ml</option>
+      <option value="3600">2병 (2 Bottles) - 3,600ml</option>
+      <option value="5400">3병 (3 Bottles) - 5,400ml</option>
+      <option value="7200">4병 (4 Bottles) - 7,200ml</option>
+      <option value="9000">5병 (5 Bottles) - 9,000ml</option>
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="bulldog">🐶 불독 용량 (Bulldog Amount, ml)</label>
+    <input type="number" id="bulldog" value="1000" step="10" oninput="calculateKatsu()">
+    <div class="pack-hint" id="bulldogPack"></div>
+  </div>
+
+  <hr>
+
+  <!-- 2. 계산 결과 / Calculated results -->
+  <div class="result">
+    <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
+    <div class="result-row">
+      <span class="result-label">🌶️ 스위트 칠리 Sweet Chili</span>
+      <span class="result-value" id="sweetChili">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🐍 장어 소스 Eel Sauce</span>
+      <span class="result-value" id="eelSauce">0</span>
+    </div>
+  </div>
+
+  <script>
+    // 불독 1ml 당 필요한 비율 (배합 기준: 불독 1L = 스위트 칠리 1L, 장어 소스 1L)
+    // Ratio per ml of bulldog sauce, based on the 1L reference recipe
+    const RATIO_KATSU = {
+      sweetChili: 1000 / 1000, // ml per ml bulldog = 1
+      eelSauce: 1000 / 1000    // ml per ml bulldog = 1
+    };
+
+    // 실제 구매 단위 (포장 단위) / Real-world purchase pack sizes
+    const PACK_KATSU = {
+      bulldog: 1800,   // ml per bottle
+      eelSauce: 1750   // ml per bottle
+    };
+
+    function applyKatsuUnit() {
+      const select = document.getElementById('katsuUnitSelect');
+      const bulldogInput = document.getElementById('bulldog');
+
+      if (select.value !== 'custom') {
+        bulldogInput.value = select.value;
+        calculateKatsu();
+      }
+    }
+
+    function calculateKatsu() {
+      const bulldogMl = parseFloat(document.getElementById('bulldog').value) || 0;
+      const sweetChiliMl = bulldogMl * RATIO_KATSU.sweetChili;
+      const eelSauceMl = bulldogMl * RATIO_KATSU.eelSauce;
+
+      document.getElementById('bulldogPack').innerText =
+        '→ ' + formatWithPack(bulldogMl, PACK_KATSU.bulldog, formatMl, '병', 'bottle');
+      document.getElementById('sweetChili').innerText = formatMl(sweetChiliMl);
+      document.getElementById('eelSauce').innerText =
+        formatWithPack(eelSauceMl, PACK_KATSU.eelSauce, formatMl, '병', 'bottle');
+    }
+
+    // 초기 계산 실행 / Run initial calculation
+    calculateKatsu();
+  </script>
+
+  <hr style="margin: 40px 0;">
+
+  <h2>🧡 스파이시 데리야키 소스 만드는 법 🧡</h2>
+  <p class="sub">How to Make Spicy Teriyaki Sauce</p>
+
+  <!-- 1. 병 단위 선택 또는 직접 입력 / Bottle size select or custom input -->
+  <div class="input-group">
+    <label for="teriUnitSelect">🐍 장어 소스 병 단위 선택 (Eel Sauce Bottle Size)</label>
+    <select id="teriUnitSelect" onchange="applyTeriUnit()">
+      <option value="custom">직접 입력 (Custom Input)</option>
+      <option value="1750">1병 (1 Bottle) - 1,750ml</option>
+      <option value="3500">2병 (2 Bottles) - 3,500ml</option>
+      <option value="5250">3병 (3 Bottles) - 5,250ml</option>
+      <option value="7000">4병 (4 Bottles) - 7,000ml</option>
+      <option value="8750">5병 (5 Bottles) - 8,750ml</option>
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="teriEel">🐍 장어 소스 용량 (Eel Sauce Amount, ml)</label>
+    <input type="number" id="teriEel" value="1000" step="10" oninput="calculateTeri()">
+    <div class="pack-hint" id="teriEelPack"></div>
+  </div>
+
+  <hr>
+
+  <!-- 2. 계산 결과 / Calculated results -->
+  <div class="result">
+    <h3>🥣 필요한 재료 (Ingredients Needed)</h3>
+    <div class="result-row">
+      <span class="result-label">🌶️ 스위트 칠리 Sweet Chili</span>
+      <span class="result-value" id="teriSweetChili">0</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">🔥 캡사이신 Capsaicin</span>
+      <span class="result-value" id="teriCapsaicin">0</span>
+    </div>
+  </div>
+
+  <script>
+    // 장어 소스 1ml 당 필요한 비율 (배합 기준: 장어 소스 1000ml = 스위트 칠리 1000ml, 캡사이신 30g)
+    // Ratio per ml of eel sauce, based on the 1000ml reference recipe
+    const RATIO_TERI = {
+      sweetChili: 1000 / 1000, // ml per ml eel sauce = 1
+      capsaicin: 30 / 1000     // g per ml eel sauce = 0.03
+    };
+
+    // 실제 구매 단위 (포장 단위) / Real-world purchase pack sizes
+    const PACK_TERI = {
+      eelSauce: 1750,   // ml per bottle
+      capsaicin: 550    // g per jar
+    };
+
+    function applyTeriUnit() {
+      const select = document.getElementById('teriUnitSelect');
+      const teriEelInput = document.getElementById('teriEel');
+
+      if (select.value !== 'custom') {
+        teriEelInput.value = select.value;
+        calculateTeri();
+      }
+    }
+
+    function calculateTeri() {
+      const eelMl = parseFloat(document.getElementById('teriEel').value) || 0;
+      const sweetChiliMl = eelMl * RATIO_TERI.sweetChili;
+      const capsaicinG = eelMl * RATIO_TERI.capsaicin;
+
+      document.getElementById('teriEelPack').innerText =
+        '→ ' + formatWithPack(eelMl, PACK_TERI.eelSauce, formatMl, '병', 'bottle');
+      document.getElementById('teriSweetChili').innerText = formatMl(sweetChiliMl);
+      document.getElementById('teriCapsaicin').innerText =
+        formatWithPack(capsaicinG, PACK_TERI.capsaicin, formatG, '병', 'jar');
+    }
+
+    // 초기 계산 실행 / Run initial calculation
+    calculateTeri();
+  </script>
+
+</body>
+</html>
